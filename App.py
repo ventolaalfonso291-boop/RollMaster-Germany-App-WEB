@@ -1,152 +1,11 @@
-import json
+import streamlit as st
 import datetime
 import math
 from typing import Dict, Any, List
-import streamlit as st
 
-# Configurazione della pagina Streamlit
-st.set_page_config(
-    page_title="RollMaster-germany-App",
-    page_icon="🛡️",
-    layout="wide"
-)
-
-class RollMasterGermanyAppEngine:
-    """
-    Enterprise Backend Engine per l'app 'RollMaster-germany-App'.
-    Gestisce la geolocalizzazione, il database normativo tedesco (DIN/VOB),
-    il filtraggio delle ditte vicine, il sistema multilingue per la classe operaia
-    e il sistema di allerta e sicurezza (BG BAU).
-    """
-    
+# --- BACKEND ENGINE (Logica Aziendale & Normativa Tedesca DIN/VOB) ---
+class RollMasterEnterpriseEngine:
     def __init__(self):
-        self.nome_app = "RollMaster-germany-App"
-        
-        # Dizionario delle traduzioni e dei testi multilingue per la classe operaia in Germania
-        self.traduzioni = {
-            "DE": {
-                "titolo": "RollMaster-germany-App",
-                "sottotitolo": "Professionelle Plattform für Rolladen und Sonnenschutz in Deutschland",
-                "disclaimer": "RECHTLICHER HINWEIS: Die Plattform agiert ausschließlich als technologischer Vermittler zwischen Kunden und zertifizierten Fachbetrieben.",
-                "scegli_lingua": "Sprachauswahl / Language",
-                "area": "Stadt / Region in Deutschland",
-                "categoria": "Eingriffskategorie",
-                "raggio": "Suchradius (km)",
-                "ditte_titolo": "Verfügbare Fachbetriebe in der Nähe von",
-                "tariffa": "Stundensatz",
-                "contatta": "Kontaktieren",
-                "preventivo": "Schneller Regionaler Kostenvoranschlag",
-                "materiali": "Geschätzte Materialkosten (€)",
-                "totale": "Indikative Gesamtschätzung (inkl. Anfahrt & Handwerker)",
-                "inviato": "Anfrage erfolgreich an den Betrieb gesendet!"
-            },
-            "IT": {
-                "titolo": "RollMaster-germany-App",
-                "sottotitolo": "Piattaforma Professionale per Tapparelle e Schermature Solari in Germania",
-                "disclaimer": "AVVISO LEGALE: La piattaforma opera esclusivamente come servizio di intermediazione tecnologica.",
-                "scegli_lingua": "Seleziona Lingua / Language",
-                "area": "Città / Area in Germania",
-                "categoria": "Categoria Intervento",
-                "raggio": "Raggio di ricerca (km)",
-                "ditte_titolo": "Ditte Specializzate disponibili vicino a",
-                "tariffa": "Tariffa Oraria",
-                "contatta": "Contatta",
-                "preventivo": "Calcolatore Preventivo Rapido Regionale",
-                "materiali": "Costo stimato dei materiali (€)",
-                "totale": "Stima Indicativa Lavorazione (include chiamata e manodopera)",
-                "inviato": "Richiesta inviata con successo alla ditta!"
-            },
-            "RO": {
-                "titolo": "RollMaster-germany-App",
-                "sottotitolo": "Platformă Profesională pentru Rulouri și Protecție Solară în Germania",
-                "disclaimer": "AVIZ LEGAL: Platforma acționează exclusiv ca un serviciu de intermediere tehnologică.",
-                "scegli_lingua": "Selectați limba",
-                "area": "Oraș / Regiune în Germania",
-                "categoria": "Categoria intervenției",
-                "raggio": "Raza de căutare (km)",
-                "ditte_titolo": "Companii specializate disponibile lângă",
-                "tariffa": "Tarif orar",
-                "contatta": "Contactează",
-                "preventivo": "Calculator rapid de preț regional",
-                "materiali": "Cost estimat materiale (€)",
-                "totale": "Estimare orientativă totală",
-                "inviato": "Solicitare trimisă cu succes către companie!"
-            },
-            "PL": {
-                "titolo": "RollMaster-germany-App",
-                "sottotitolo": "Profesjonalna platforma do rolet i osłon przeciwsłonecznych w Niemczech",
-                "disclaimer": "INFORMACJA PRAWNA: Platforma działa wyłącznie jako pośrednik technologiczny.",
-                "scegli_lingua": "Wybierz język",
-                "area": "Miasto / Region w Niemczech",
-                "categoria": "Kategoria interwencji",
-                "raggio": "Promień wyszukiwania (km)",
-                "ditte_titolo": "Dostępne wyspecjalizowane firmy w pobliżu",
-                "tariffa": "Stawka godzinowa",
-                "contatta": "Kontakt",
-                "preventivo": "Szybki regionalny kalkulator kosztów",
-                "materiali": "Szacowany koszt materiałów (€)",
-                "totale": "Szacunkowy koszt całkowity",
-                "inviato": "Zapytanie zostało pomyślnie wysłane do firmy!"
-            },
-            "ES": {
-                "titolo": "RollMaster-germany-App",
-                "sottotitolo": "Plataforma Profesional para Persianas y Protección Solar en Alemania",
-                "disclaimer": "AVISO LEGAL: La plataforma actúa exclusivamente como intermediario tecnológico.",
-                "scegli_lingua": "Seleccionar idioma",
-                "area": "Ciudad / Región en Alemania",
-                "categoria": "Categoría de intervención",
-                "raggio": "Radio de búsqueda (km)",
-                "ditte_titolo": "Empresas especializadas disponibles cerca de",
-                "tariffa": "Tarifa por hora",
-                "contatta": "Contactar",
-                "preventivo": "Calculadora de presupuesto regional",
-                "materiali": "Costo estimado de materiales (€)",
-                "totale": "Estimación indicativa total",
-                "inviato": "¡Solicitud enviada con éxito a la empresa!"
-            },
-            "PT": {
-                "titolo": "RollMaster-germany-App",
-                "sottotitolo": "Plataforma Profissional para Estores e Proteção Solar na Alemanha",
-                "disclaimer": "AVISO LEGAL: A plataforma atua exclusivamente como intermediário tecnológico.",
-                "scegli_lingua": "Selecionar idioma",
-                "area": "Cidade / Região na Alemanha",
-                "categoria": "Categoria de intervenção",
-                "raggio": "Raio de pesquisa (km)",
-                "ditte_titolo": "Empresas especializadas disponíveis perto de",
-                "tariffa": "Tarifa horária",
-                "contatta": "Contactar",
-                "preventivo": "Calculadora de orçamento regional",
-                "materiali": "Custo estimado dos materiais (€)",
-                "totale": "Estimativa indicativa total",
-                "inviato": "Pedido enviado com sucesso para a empresa!"
-            },
-            "TR": {
-                "titolo": "RollMaster-germany-App",
-                "sottotitolo": "Almanya'da Panjur ve Güneş Koruması için Profesyonel Platform",
-                "disclaimer": "YASAL UYARI: Platform yalnızca teknolojik aracı olarak hizmet vermektedir.",
-                "scegli_lingua": "Dil Seçimi",
-                "area": "Almanya'da Şehir / Bölge",
-                "categoria": "Müdحale Kategorisi",
-                "raggio": "Arama yarıçapı (km)",
-                "ditte_titolo": "Yakınlarda mevcut uzman firmalar",
-                "tariffa": "Saatlik Ücret",
-                "contatta": "İletişim",
-                "preventivo": "Hızlı Bölgesel Fiyat Hesaplayıcı",
-                "materiali": "Tahmini malzeme maliyeti (€)",
-                "totale": "Tahmini Toplam Tutar",
-                "inviato": "Talep firmaya başarıyla gönderildi!"
-            }
-        }
-
-        self.indici_regionali = {
-            "STUTTGART": 1.25,
-            "MUNCHEN": 1.30,
-            "BERLIN": 1.15,
-            "FREIBURG": 1.05,
-            "PROVINCIA_STANDARD": 1.0
-        }
-
-        # Database ditte con terminologia tecnica tedesca standard (DIN / VOB / BG BAU)
         self.database_ditte = [
             {
                 "id": "DE_MARCHESE_01",
@@ -155,10 +14,10 @@ class RollMasterGermanyAppEngine:
                 "lat": 48.7758,
                 "lon": 9.1829,
                 "specializzazione": ["ROLLLADEN", "MARKISE"],
-                "certificazioni": ["DIN EN 13659", "DIN EN 13561", "VOB/C", "BG BAU konform"],
+                "certificazioni": ["DIN EN 13659", "DIN EN 13561", "VOB/C"],
                 "telefono": "+49 711 123456",
-                "tariffa_oraria_euro": 85.0,
-                "costo_chiamata_base": 50.0
+                "disponibile_subito": True,
+                "tariffa_oraria_euro": 85.0
             },
             {
                 "id": "DE_SONNEN_02",
@@ -167,112 +26,180 @@ class RollMasterGermanyAppEngine:
                 "lat": 47.9990,
                 "lon": 7.8421,
                 "specializzazione": ["JALOUSIE_RAFFSTORE", "INSEKTENSCHUTZ"],
-                "certificazioni": ["DIN EN 13120", "DIN 18055", "BG BAU konform"],
+                "certificazioni": ["DIN EN 13120", "DIN 18055"],
                 "telefono": "+49 761 987654",
-                "tariffa_oraria_euro": 92.0,
-                "costo_chiamata_base": 60.0
+                "disponibile_subito": True,
+                "tariffa_oraria_euro": 92.0
+            },
+            {
+                "id": "DE_EXPRESS_03",
+                "nome": "Hauptstadt Rollate & Insektenschutz Express",
+                "citta": "Berlin",
+                "lat": 52.5200,
+                "lon": 13.4050,
+                "specializzazione": ["ROLLLADEN", "INSEKTENSCHUTZ", "MARKISE"],
+                "certificazioni": ["DIN EN 13659", "Meisterbetrieb"],
+                "telefono": "+49 30 555666",
+                "disponibile_subito": False,
+                "tariffa_oraria_euro": 79.0
+            },
+            {
+                "id": "DE_BAIER_04",
+                "nome": "Münchener Beschattungssysteme & Jalousie Bauer",
+                "citta": "München",
+                "lat": 48.1351,
+                "lon": 11.5820,
+                "specializzazione": ["JALOUSIE_RAFFSTORE", "MARKISE"],
+                "certificazioni": ["DIN EN 13561", "DIN EN 12101"],
+                "telefono": "+49 89 112233",
+                "disponibile_subito": True,
+                "tariffa_oraria_euro": 98.0
             }
         ]
 
-    def _calcola_distanza(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        self.catalogo_global_sonnenschutz = {
+            "ROLLLADEN": {
+                "normative": ["DIN EN 13659 (Windwiderstand)", "DIN 18055"],
+                "materiali": ["PVC Standard Lamellen", "Aluminium Schäumung Eco", "Stahlpanzer V1"],
+                "ricambi": ["Gurtband 14mm", "Gurtwickler Unterputz", "Walzenkapsel", "Stahlfeder"],
+                "attrezzi": ["Langschraubendreher", "Federklemmenzange", "Magnetische Wasserwaage"]
+            },
+            "MARKISE": {
+                "normative": ["DIN EN 13561 (Außenmarkisen)", "BG BAU Windklasse 2"],
+                "materiali": ["Gelenkarmmarkise Premium", "Vollkassette", "Acrylgewebe imprägniert"],
+                "ricambi": ["Gelenkarm", "Wandhalterung", "Somfy IO Rohrmotor"],
+                "attrezzi": ["Drehmomentschlüssel", "Leitungsfinder", "Baustellenkompass"]
+            },
+            "JALOUSIE_RAFFSTORE": {
+                "normative": ["DIN EN 13120", "DIN EN 14201"],
+                "materiali": ["Raffstore 80mm gebördelt", "Innenjalousie Slim"],
+                "ricambi": ["Aufzugsband", "Leiterkordel", "Elero WT Motor"],
+                "attrezzi": ["Millimeter-Dickenmessgerät", "Crimpzange"]
+            },
+            "INSEKTENSCHUTZ": {
+                "normative": ["DIN Spec 18055"],
+                "materiali": ["Roll-Insektenschutz", "Plissee", "Magnetischer Alurahmen"],
+                "ricambi": ["Fiberglasgewebe schwarz", "Bürstendichtung", "Zugfeder"],
+                "attrezzi": ["Kederrolle", "Ersatzklingenmesser"]
+            }
+        }
+
+    def _calcola_distanza(self, lat1, lon1, lat2, lon2):
         R = 6371.0
         dlat = math.radians(lat2 - lat1)
         dlon = math.radians(lon2 - lon1)
         a = math.sin(dlat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2)**2
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-        return round(R * c, 2)
+        return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))), 2)
 
-    def cerca_ditte(self, citta_selezionata: str, categoria: str, raggio: float) -> List[Dict[str, Any]]:
-        coordinate_citta = {
-            "STUTTGART": (48.7758, 9.1829),
-            "MUNCHEN": (48.1351, 11.5820),
-            "BERLIN": (52.5200, 13.4050),
-            "FREIBURG": (47.9990, 7.8421)
-        }
-        lat_c, lon_c = coordinate_citta.get(citta_selezionata.upper(), (48.7758, 9.1829))
-        
+    def cerca_ditte(self, lat_c, lon_c, categoria, raggio):
         risultati = []
         for ditta in self.database_ditte:
             if categoria.upper() in ditta["specializzazione"]:
                 dist = self._calcola_distanza(lat_c, lon_c, ditta["lat"], ditta["lon"])
                 if dist <= raggio:
-                    d_info = ditta.copy()
-                    d_info["distanza_km"] = dist
-                    risultati.append(d_info)
+                    item = ditta.copy()
+                    item["distanza_km"] = dist
+                    item["norme"] = self.catalogo_global_sonnenschutz[categoria.upper()]["normative"]
+                    risultati.append(item)
         return sorted(risultati, key=lambda x: x["distanza_km"])
 
-# Inizializzazione Engine
-engine = RollMasterGermanyAppEngine()
+    def check_meteo(self, categoria, vento):
+        if categoria.upper() == "MARKISE" and vento >= 38.0:
+            return True, "🚨 CRITICAL BG BAU: Windstärke überschreitet DIN EN 13561 (38 km/h). Montage sofort einstellen!"
+        elif categoria.upper() == "JALOUSIE_RAFFSTORE" and vento >= 45.0:
+            return True, "⚠️ WARNING: Hoher Wind (45 km/h). Gefahr von Lamellenschäden."
+        return False, "Sicherer Betrieb. DIN-konforme Arbeitsbedingungen."
 
-# --- INTERFACCIA UTENTE MULTILINGUE ---
-st.sidebar.header("🌐 Configurazione / Settings")
-lingua_codice = st.sidebar.selectbox(
-    "Lingua / Language / Limba / Język / Dil", 
-    options=["IT", "DE", "RO", "PL", "ES", "PT", "TR"],
-    format_func=lambda x: {
-        "IT": "🇮🇹 Italiano",
-        "DE": "🇩🇪 Deutsch",
-        "RO": "🇷🇴 Română",
-        "PL": "🇵🇱 Polski",
-        "ES": "🇪🇸 Español",
-        "PT": "🇵🇹 Português",
-        "TR": "🇹🇷 Türkçe"
-    }[x]
-)
+# --- FRONTEND STREAMLIT (Interfaccia Utente & SaaS Monetizzazione) ---
+def run_app():
+    st.set_page_config(page_title="RollMaster Germany", page_icon="🛡️", layout="wide")
+    engine = RollMasterEnterpriseEngine()
 
-t = engine.traduzioni[lingua_codice]
+    st.title("🛡️ RollMaster-Germany-App")
+    st.markdown("### Das Enterprise SaaS Portal für Sonnenschutz-Fachbetriebe & Montage-Notdienste")
 
-st.title(f"🛡️ {t['titolo']}")
-st.markdown(f"### {t['sottotitolo']}")
-st.info(t['disclaimer'])
+    # Banner promozionale primi 100 clienti (Offerta Founder 49€ / Early Bird)
+    st.info("🔥 **Gründer-Aktion (Early Bird):** Die ersten 100 Meisterbetriebe erhalten das Enterprise-Paket für nur **49 € / Monat** im ersten Jahr (Gutscheincode: `EARLY100`)!")
 
-# Sidebar Parametri Intervento
-st.sidebar.divider()
-st.sidebar.header("⚙️ Parametri Cantiere")
-citta = st.sidebar.selectbox(t['area'], ["Stuttgart", "Munchen", "Berlin", "Freiburg"])
-categoria = st.sidebar.selectbox(t['categoria'], ["ROLLLADEN", "MARKISE", "JALOUSIE_RAFFSTORE", "INSEKTENSCHUTZ"])
-raggio_km = st.sidebar.slider(t['raggio'], 10, 200, 50)
+    st.sidebar.header("📍 Standort & Parameter")
+    citta_scelta = st.sidebar.selectbox("Wähle Standort", ["Stuttgart", "München", "Berlin", "Freiburg"])
+    
+    coords = {
+        "Stuttgart": (48.7800, 9.1800),
+        "München": (48.1300, 11.5700),
+        "Berlin": (52.5100, 13.4000),
+        "Freiburg": (47.9900, 7.8300)
+    }
+    lat, lon = coords[citta_scelta]
 
-# Traduzione automatica simulata per la ditta tedesca
-st.sidebar.divider()
-st.sidebar.markdown("💬 **Traduttore Istantaneo Bidirezionale:**")
-st.sidebar.caption("Scrivi nella tua lingua: l'app converte automaticamente la richiesta in tedesco tecnico (DIN/VOB) per la ditta.")
-messaggio_utente = st.sidebar.text_area("Descrivi il guasto o l'installazione:", "Ho bisogno di riparare la cinghia della tapparella bloccata.")
-if st.sidebar.button("Traduci e Invia alla Ditta"):
-    st.sidebar.success("✅ Tradotto in Tedesco Tecnico: *'Reparatur Rolladen Gurtband blockiert (Norm DIN 18055)'* inviato con successo!")
+    categoria = st.sidebar.selectbox("Produkt / Kategorie", ["ROLLLADEN", "MARKISE", "JALOUSIE_RAFFSTORE", "INSEKTENSCHUTZ"])
+    raggio = st.sidebar.slider("Suchradius (km)", 10, 200, 50)
+    vento = st.sidebar.slider("Aktuelle Windgeschwindigkeit (km/h)", 0, 80, 15)
 
-st.divider()
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "🛠️ Notdienst & Ditte-Matching", 
+        "📋 Technische Kataloge & DIN", 
+        "⚠️ BG BAU Sicherheits-Monitor",
+        "💳 SaaS Abonnement & Gründer-Rabatt"
+    ])
 
-# Sezione Principale: Ditte Specializzate
-st.subheader(f"📍 {t['ditte_titolo']} {citta}")
-ditte_trovate = engine.cerca_ditte(citta, categoria, raggio_km)
+    with tab1:
+        st.subheader(f"Verfügbare Meisterbetriebe in der Nähe von {citta_scelta}")
+        ditte_trovate = engine.cerca_ditte(lat, lon, categoria, raggio)
+        
+        if ditte_trovate:
+            for d in ditte_trovate:
+                with st.expander(f"🏢 {d['nome']} ({d['distanza_km']} km entfernt) - {d['citta']}"):
+                    st.write(f"📞 **Telefon:** {d['telefono']}")
+                    st.write(f"💵 **Stundensatz:** {d['tariffa_oraria_euro']} € / Std.")
+                    st.write(f"📜 **Zertifizierungen:** {', '.join(d['certificazioni'])}")
+                    st.write(f"⚖️ **Angewandte Normen:** {', '.join(d['norme'])}")
+                    st.success("Sofort verfügbar" if d["disponibile_subito"] else "Zur Zeit ausgelastet")
+        else:
+            st.warning("Keine Betriebe im gewählten Radius gefunden. Erweitern Sie den Suchradius.")
 
-if ditte_trovate:
-    for d in ditte_trovate:
-        with st.container():
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                st.markdown(f"### **{d['nome']}**")
-                st.write(f"📞 **Tel:** {d['telefono']} | 📍 **Distanza:** {d['distanza_km']} km")
-                st.write(f"📜 **Certificazioni DIN/VOB/BG BAU:** {', '.join(d['certificazioni'])}")
-            with col2:
-                st.metric(t['tariffa'], f"€ {d['tariffa_oraria_euro']}")
-                if st.button(t['contatta'], key=d["id"]):
-                    st.success(t['inviato'])
-            st.markdown("---")
-else:
-    st.warning("Nessuna ditta trovata con questi criteri nel raggio selezionato.")
+    with tab2:
+        st.subheader(f"Strukturierte DIN-Daten für: {categoria}")
+        cat_info = engine.catalogo_global_sonnenschutz[categoria]
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("#### 📜 Relevante Normen (DIN / VOB)")
+            for n in cat_info["normative"]:
+                st.markdown(f"- {n}")
+            st.markdown("#### ⚙️ Standard Ersatzteile")
+            for r in cat_info["ricambi"]:
+                st.markdown(f"- {r}")
+        with col2:
+            st.markdown("#### 🧱 Typische Materialien")
+            for m in cat_info["materiali"]:
+                st.markdown(f"- {m}")
+            st.markdown("#### 🧰 Benötigte Werkzeuge")
+            for a in cat_info["attrezzi"]:
+                st.markdown(f"- {a}")
 
-# Sezione Preventivo Rapido Regionale
-st.subheader(f"💶 {t['preventivo']}")
-col_p1, col_p2 = st.columns(2)
-with col_p1:
-    costo_materiale_base = st.number_input(t['materiali'], min_value=0.0, value=120.0, step=10.0)
-with col_p2:
-    moltiplicatore = engine.indici_regionali.get(citta.upper(), 1.0)
-    stima_totale = (50.0 + 85.0) * moltiplicatore + costo_materiale_base
-    st.metric(t['totale'], f"€ {stima_totale:.2f}")
+    with tab3:
+        st.subheader("⚠️ BG BAU Arbeitsschutz & Wind-Sensorik")
+        blocco, msg = engine.check_meteo(categoria, vento)
+        if blocco:
+            st.error(msg)
+        else:
+            st.success(msg)
+        st.info("Das System gleicht die Baustellendaten automatisch mit den Richtlinien der Berufsgenossenschaft der Bauwirtschaft (BG BAU) ab.")
 
-# Footer
-st.markdown("---")
-st.caption("RollMaster-germany-App © 2026 - Conforme agli standard di sicurezza BG BAU e normative tecniche tedesche.")
+    with tab4:
+        st.subheader("💳 Enterprise SaaS Lizenz & Gründer-Aktion")
+        st.markdown("Sichern Sie sich den vollen Zugriff auf alle regionalen Schnittstellen und DIN-Datenbanken.")
+        
+        coupon = st.text_input("Gutscheincode eingeben (z.B. EARLY100)")
+        if coupon.upper() == "EARLY100":
+            st.success("🎉 Gutschein erfolgreich angewendet! Gründer-Rabatt für die ersten 100 Kunden aktiviert (Nur **49 € / Monat**).")
+            if st.button("Jetzt kostenpflichtig abonnieren (Stripe Checkout Simulation)"):
+                st.balloons()
+                st.success("Abonnement erfolgreich abgeschlossen! Willkommen im RollMaster Netzwerk.")
+        elif coupon:
+            st.error("Ungültiger oder abgelaufener Gutscheincode.")
+        else:
+            st.warning("Geben Sie den Code **EARLY100** ein, um die 49€-Aktion für die ersten 100 Unternehmen zu beanspruchen.")
+
+if __name__ == "__main__":
+    run_app()
